@@ -1,52 +1,83 @@
 /**
- * Example: inputPlaceholder( document.getElementById('my_input_element') )
- * @param {Element} input
- * @param {String} [color='#AAA']
- * @return {Element} input
+ * Adds placeholder support to older browsers. Does not support password fields
+ *   yet.
+ * @param {Element} input Input or textarea element.
+ * @param {string} [color='#aaa'] Color string. Recommend hash format unless
+ *   detecting if the browser has support for rgb/rgba/hsl/hsla/other.
+ * @return {Element} The element passed in.
+ * @license License: http://www.opensource.org/licenses/mit-license.php
  */
-function inputPlaceholder (input, color) {
-
-	if (!input) return null;
+var inputPlaceholder = function (input, color) {
+	/**
+	 * Tested with:
+	 * - IE 7
+	 * - IE 8
+	 * - IE 9
+	 * - Firefox 3.6
+	 */
+	
+	// No support for password yet
+	var type = input.getAttribute('type');
+	if (type !== null && type.toLowerCase() === 'password') {
+		return input;
+	}
 
 	// Do nothing if placeholder supported by the browser (Webkit, Firefox 3.7)
-	if (input.placeholder && 'placeholder' in document.createElement(input.tagName)) return input;
-
-	color = color || '#AAA';
-	var default_color = input.style.color;
+	if (input.placeholder && 'placeholder' in document.createElement(input.tagName)) {
+		return input;
+	}
+	
+	if (color === undefined) {
+		color = '#aaa';
+	}
+	
+	var defaultColor = input.style.color;
 	var placeholder = input.getAttribute('placeholder');
+	var addEvent = 'addEventListener';
+	var event = 'focus';
+	var blurEvent = 'blur';
+	var submitEvent = 'submit';
 
 	if (input.value === '' || input.value == placeholder) {
 		input.value = placeholder;
 		input.style.color = color;
-		input.setAttribute('data-placeholder-visible', 'true');
+		input.setAttribute('data-placeholder-visible', true);
 	}
-
-	var add_event = /*@cc_on'attachEvent'||@*/'addEventListener';
-
-	input[add_event](/*@cc_on'on'+@*/'focus', function(){
-	 input.style.color = default_color;
-	 if (input.getAttribute('data-placeholder-visible')) {
-		 input.setAttribute('data-placeholder-visible', '');
-		 input.value = '';
-	 }
+	
+	if (input.attachEvent) {
+		addEvent = 'attachEvent';
+		event = 'onfocus';
+		blurEvent = 'onblur';
+		submitEvent = 'onsubmit';
+	}
+	
+	input[addEvent](event, function() {
+		input.style.color = defaultColor;
+	 
+		if (input.getAttribute('data-placeholder-visible')) {
+			input.removeAttribute('data-placeholder-visible');
+			input.value = '';
+	  }
 	}, false);
 
-	input[add_event](/*@cc_on'on'+@*/'blur', function(){
+	input[addEvent](blurEvent, function() {
 		if (input.value === '') {
-			input.setAttribute('data-placeholder-visible', 'true');
+			input.setAttribute('data-placeholder-visible', true);
 			input.value = placeholder;
 			input.style.color = color;
 		} else {
-			input.style.color = default_color;
-			input.setAttribute('data-placeholder-visible', '');
+			input.style.color = defaultColor;
+			input.removeAttribute('data-placeholder-visible');
 		}
 	}, false);
 
-	input.form && input.form[add_event](/*@cc_on'on'+@*/'submit', function(){
-		if (input.getAttribute('data-placeholder-visible')) {
-			input.value = '';
-		}
-	}, false);
+	if (input.form) {
+		input.form[addEvent](submitEvent, function() {
+			if (input.getAttribute('data-placeholder-visible')) {
+				input.value = '';
+			}
+		}, false);
+	}
 
 	return input;
-}
+};
